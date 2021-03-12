@@ -61,6 +61,32 @@ mkdir -p "${OUTPUT_DIR}/iphonesimulator"
 ditto "${DERIVED_DATA_PATH}/Build/Products/Release-iphonesimulator/${FWNAME}.framework" "${OUTPUT_DIR}/iphonesimulator/${FWNAME}.framework"
 rm -rf "${DERIVED_DATA_PATH}"
 
+# tvOS
+DERIVED_DATA_PATH=$( mktemp -d )
+xcrun xcodebuild build \
+	$COMMON_SETUP \
+    -scheme "${FWNAME} (tvOS)" \
+	-derivedDataPath "${DERIVED_DATA_PATH}" \
+	-destination 'generic/platform=tvOS'
+
+rm -rf "${OUTPUT_DIR}/appletvos"
+mkdir -p "${OUTPUT_DIR}/appletvos"
+ditto "${DERIVED_DATA_PATH}/Build/Products/Release-appletvos/${FWNAME}.framework" "${OUTPUT_DIR}/appletvos/${FWNAME}.framework"
+rm -rf "${DERIVED_DATA_PATH}"
+
+# tvOS Simulator
+DERIVED_DATA_PATH=$( mktemp -d )
+xcrun xcodebuild build \
+	$COMMON_SETUP \
+    -scheme "${FWNAME} (tvOS Simulator)" \
+	-derivedDataPath "${DERIVED_DATA_PATH}" \
+	-destination 'generic/platform=tvOS Simulator'
+
+rm -rf "${OUTPUT_DIR}/appletvsimulator"
+mkdir -p "${OUTPUT_DIR}/appletvsimulator"
+ditto "${DERIVED_DATA_PATH}/Build/Products/Release-appletvsimulator/${FWNAME}.framework" "${OUTPUT_DIR}/appletvsimulator/${FWNAME}.framework"
+rm -rf "${DERIVED_DATA_PATH}"
+
 #
 
 rm -rf "${BASE_PWD}/Frameworks/iphoneos"
@@ -70,6 +96,14 @@ ditto "${OUTPUT_DIR}/iphoneos/${FWNAME}.framework" "${BASE_PWD}/Frameworks/iphon
 rm -rf "${BASE_PWD}/Frameworks/iphonesimulator"
 mkdir -p "${BASE_PWD}/Frameworks/iphonesimulator"
 ditto "${OUTPUT_DIR}/iphonesimulator/${FWNAME}.framework" "${BASE_PWD}/Frameworks/iphonesimulator/${FWNAME}.framework"
+
+rm -rf "${BASE_PWD}/Frameworks/appletvos"
+mkdir -p "${BASE_PWD}/Frameworks/appletvos"
+ditto "${OUTPUT_DIR}/appletvos/${FWNAME}.framework" "${BASE_PWD}/Frameworks/appletvos/${FWNAME}.framework"
+
+rm -rf "${BASE_PWD}/Frameworks/appletvsimulator"
+mkdir -p "${BASE_PWD}/Frameworks/appletvsimulator"
+ditto "${OUTPUT_DIR}/appletvsimulator/${FWNAME}.framework" "${BASE_PWD}/Frameworks/appletvsimulator/${FWNAME}.framework"
 
 rm -rf "${BASE_PWD}/Frameworks/macosx"
 mkdir -p "${BASE_PWD}/Frameworks/macosx"
@@ -85,6 +119,8 @@ rm -rf "${BASE_PWD}/Frameworks/${FWNAME}.xcframework"
 xcrun xcodebuild -quiet -create-xcframework \
 	-framework "${OUTPUT_DIR}/iphoneos/${FWNAME}.framework" \
 	-framework "${OUTPUT_DIR}/iphonesimulator/${FWNAME}.framework" \
+	-framework "${OUTPUT_DIR}/appletvos/${FWNAME}.framework" \
+	-framework "${OUTPUT_DIR}/appletvsimulator/${FWNAME}.framework" \
 	-framework "${OUTPUT_DIR}/macosx/${FWNAME}.framework" \
 	-framework "${OUTPUT_DIR}/macosx_catalyst/${FWNAME}.framework" \
 	-output "${BASE_PWD}/Frameworks/${FWNAME}.xcframework"
