@@ -22,6 +22,7 @@ IPHONESIMULATOR_SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
 APPLETVOS_SDK=$(xcrun --sdk appletvos --show-sdk-path)
 APPLETVSIMULATOR_SDK=$(xcrun --sdk appletvsimulator --show-sdk-path)
 OSX_SDK=$(xcrun --sdk macosx --show-sdk-path)
+export TVOS_MIN_SDK_VERSION="9.0"
 
 export MACOSX_DEPLOYMENT_TARGET="10.10" # 
 
@@ -84,6 +85,19 @@ configure() {
    elif [ "$OS" == "iPhoneOS" ]; then
       ${SRC_DIR}/Configure ios-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
    elif [ "$OS" == "AppleTVSimulator" ]; then
+	TARGET="darwin64-${ARCH}-cc"
+        RUNTARGET="-target ${ARCH}-apple-tvos${TVOS_MIN_SDK_VERSION}-simulator"
+	export SYSROOT=$(xcrun --sdk appletvsimulator --show-sdk-path)
+        export BUILD_TOOLS="${DEVELOPER}"
+        export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
+        export LC_CTYPE=C
+
+
+        export CFLAGS=" -Os -fembed-bitcode -arch ${ARCH} ${RUNTARGET} "
+        export LDFLAGS=" -arch ${ARCH} -isysroot ${SYSROOT}"
+        export CPPFLAGS=" -I.. -isysroot ${SYSROOT}"
+        export CXX="${BUILD_TOOLS}/usr/bin/gcc"
+
       #${SRC_DIR}/Configure tvos-sim-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
       # Patch apps/speed.c to not use fork() since it's not available on tvOS
       	LANG=C sed -i -- 's/define HAVE_FORK 1/define HAVE_FORK 0/' "${SRC_DIR}/apps/speed.c"
@@ -91,10 +105,17 @@ configure() {
 	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/apps/ocsp.c"
 	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/test/drbgtest.c"
 	LANG=C sed -i -- 's/!defined(OPENSSL_NO_ASYNC)/defined(HAVE_FORK)/' "${SRC_DIR}/crypto/async/arch/async_posix.h"
-	export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
-	export TVOS_MIN_SDK_VERSION="9.0"
-      ${SRC_DIR}/Configure iphoneos-cross no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+      echo -e "${SRC_DIR}/Configure ${TARGET} no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log""
+      ${SRC_DIR}/Configure ${TARGET} no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
 	sed -ie "s!^CFLAGS=!CFLAGS=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -mtvos-version-min=${TVOS_MIN_SDK_VERSION} !" "Makefile"
+	cp Makefile ~/Makefile.ross
+	# Clean up exports
+        export CC=""
+        export CXX=""
+        export CFLAGS=""
+        export LDFLAGS=""
+        export CPPFLAGS=""
+
    elif [ "$OS" == "AppleTVOS" ]; then
       # Patch apps/speed.c to not use fork() since it's not available on tvOS
       	LANG=C sed -i -- 's/define HAVE_FORK 1/define HAVE_FORK 0/' "${SRC_DIR}/apps/speed.c"
@@ -103,9 +124,14 @@ configure() {
 	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/test/drbgtest.c"
 	LANG=C sed -i -- 's/!defined(OPENSSL_NO_ASYNC)/defined(HAVE_FORK)/' "${SRC_DIR}/crypto/async/arch/async_posix.h"
 	export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
-	export TVOS_MIN_SDK_VERSION="9.0"
       ${SRC_DIR}/Configure iphoneos-cross no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
 	sed -ie "s!^CFLAGS=!CFLAGS=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -mtvos-version-min=${TVOS_MIN_SDK_VERSION} !" "Makefile"
+	# Clean up exports
+        export CC=""
+        export CXX=""
+        export CFLAGS=""
+        export LDFLAGS=""
+        export CPPFLAGS=""
 
    fi
 }
@@ -229,13 +255,12 @@ build_tvos() {
 
    build "x86_64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
    build "arm64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
-   build "arm64e" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
+   #build "arm64e" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
 
    rm -rf "${SCRIPT_DIR}"/../{appletvos/include,appletvos/lib}
    mkdir -p "${SCRIPT_DIR}"/../{appletvos/include,appletvos/lib}
 
    build "arm64" "AppleTVOS" ${TMP_BUILD_DIR} "appletvos"
-
    # Copy headers
    ditto "${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVOS-arm64/include/openssl" "${SCRIPT_DIR}/../appletvos/include/openssl"
    cp -f "${SCRIPT_DIR}/../shim/shim.h" "${SCRIPT_DIR}/../appletvos/include/openssl/shim.h"
@@ -257,8 +282,8 @@ build_tvos() {
    cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-x86_64/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}
    echo "#elif defined(__APPLE__) && defined (__arm__) && defined (__ARM_ARCH_7A__)" >> ${OPENSSLCONF_PATH}
    echo "#elif defined(__APPLE__) && defined (__arm__) && defined (__ARM_ARCH_7S__)" >> ${OPENSSLCONF_PATH}
-   echo "#elif defined(__APPLE__) && defined (__arm64e__)" >> ${OPENSSLCONF_PATH}
-   cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-arm64e/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}
+#   echo "#elif defined(__APPLE__) && defined (__arm64e__)" >> ${OPENSSLCONF_PATH}
+#   cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-arm64e/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}
    echo "#elif defined(__APPLE__) && defined (__arm64__)" >> ${OPENSSLCONF_PATH}
    cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-arm64/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}
    echo "#endif" >> ${OPENSSLCONF_PATH}
