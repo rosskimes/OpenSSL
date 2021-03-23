@@ -84,9 +84,29 @@ configure() {
    elif [ "$OS" == "iPhoneOS" ]; then
       ${SRC_DIR}/Configure ios-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
    elif [ "$OS" == "AppleTVSimulator" ]; then
-      ${SRC_DIR}/Configure tvos-sim-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+      #${SRC_DIR}/Configure tvos-sim-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+      # Patch apps/speed.c to not use fork() since it's not available on tvOS
+      	LANG=C sed -i -- 's/define HAVE_FORK 1/define HAVE_FORK 0/' "${SRC_DIR}/apps/speed.c"
+	LANG=C sed -i -- 's/!defined(OPENSSL_NO_POSIX_IO)/defined(HAVE_FORK)/' "${SRC_DIR}/apps/ocsp.c"
+	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/apps/ocsp.c"
+	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/test/drbgtest.c"
+	LANG=C sed -i -- 's/!defined(OPENSSL_NO_ASYNC)/defined(HAVE_FORK)/' "${SRC_DIR}/crypto/async/arch/async_posix.h"
+	export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
+	export TVOS_MIN_SDK_VERSION="9.0"
+      ${SRC_DIR}/Configure iphoneos-cross no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+	sed -ie "s!^CFLAGS=!CFLAGS=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -mtvos-version-min=${TVOS_MIN_SDK_VERSION} !" "Makefile"
    elif [ "$OS" == "AppleTVOS" ]; then
-      ${SRC_DIR}/Configure tvos64-cross-$ARCH no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+      # Patch apps/speed.c to not use fork() since it's not available on tvOS
+      	LANG=C sed -i -- 's/define HAVE_FORK 1/define HAVE_FORK 0/' "${SRC_DIR}/apps/speed.c"
+	LANG=C sed -i -- 's/!defined(OPENSSL_NO_POSIX_IO)/defined(HAVE_FORK)/' "${SRC_DIR}/apps/ocsp.c"
+	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/apps/ocsp.c"
+	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/test/drbgtest.c"
+	LANG=C sed -i -- 's/!defined(OPENSSL_NO_ASYNC)/defined(HAVE_FORK)/' "${SRC_DIR}/crypto/async/arch/async_posix.h"
+	export CC="${BUILD_TOOLS}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
+	export TVOS_MIN_SDK_VERSION="9.0"
+      ${SRC_DIR}/Configure iphoneos-cross no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
+	sed -ie "s!^CFLAGS=!CFLAGS=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -mtvos-version-min=${TVOS_MIN_SDK_VERSION} !" "Makefile"
+
    fi
 }
 
@@ -207,9 +227,9 @@ build_tvos() {
    rm -rf "${SCRIPT_DIR}"/../{appletvsimulator/include,appletvsimulator/lib}
    mkdir -p "${SCRIPT_DIR}"/../{appletvsimulator/include,appletvsimulator/lib}
 
-   #build "x86_64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
-   #build "arm64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
-   #build "arm64e" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
+   build "x86_64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
+   build "arm64" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
+   build "arm64e" "AppleTVSimulator" ${TMP_BUILD_DIR} "appletvsimulator"
 
    rm -rf "${SCRIPT_DIR}"/../{appletvos/include,appletvos/lib}
    mkdir -p "${SCRIPT_DIR}"/../{appletvos/include,appletvos/lib}
