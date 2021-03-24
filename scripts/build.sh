@@ -105,7 +105,7 @@ configure() {
 	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/apps/ocsp.c"
 	LANG=C sed -i -- 's/fork()/-1/' "${SRC_DIR}/test/drbgtest.c"
 	LANG=C sed -i -- 's/!defined(OPENSSL_NO_ASYNC)/defined(HAVE_FORK)/' "${SRC_DIR}/crypto/async/arch/async_posix.h"
-      echo -e "${SRC_DIR}/Configure ${TARGET} no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log""
+      #echo -e "${SRC_DIR}/Configure ${TARGET} no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log""
       ${SRC_DIR}/Configure ${TARGET} no-asm no-shared --prefix="${PREFIX}" &> "${PREFIX}.config.log"
 	sed -ie "s!^CFLAGS=!CFLAGS=-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -mtvos-version-min=${TVOS_MIN_SDK_VERSION} !" "Makefile"
 	cp Makefile ~/Makefile.ross
@@ -279,6 +279,7 @@ build_tvos() {
 
    local OPENSSLCONF_PATH="${SCRIPT_DIR}/../appletvsimulator/include/openssl/opensslconf.h"
    echo "#if defined(__APPLE__) && defined (__x86_64__)" >> ${OPENSSLCONF_PATH}
+   echo -e "cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-x86_64/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}"
    cat ${TMP_BUILD_DIR}/${OPENSSL_VERSION}-AppleTVSimulator-x86_64/include/openssl/opensslconf.h >> ${OPENSSLCONF_PATH}
    echo "#elif defined(__APPLE__) && defined (__arm__) && defined (__ARM_ARCH_7A__)" >> ${OPENSSLCONF_PATH}
    echo "#elif defined(__APPLE__) && defined (__arm__) && defined (__ARM_ARCH_7S__)" >> ${OPENSSLCONF_PATH}
