@@ -6,7 +6,6 @@ let package = Package(
     name: "OpenSSL",
     platforms: [
         .iOS(.v9),
-        .tvOS(.v9),
         .macOS(.v10_10)
     ],
     products: [
